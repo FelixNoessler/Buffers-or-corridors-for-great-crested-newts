@@ -17,10 +17,7 @@ breed [newts newt]
 newts-own
 [
   actual-pond-id
-
-  ; migration variables
   should-migrate
-
   age
 ]
 
@@ -79,18 +76,9 @@ to start-population
     set age random 16
     set should-migrate false
 
-    let startx 0
-    let starty 0
-
-    ask one-of patches with [pcolor = blue]
-    [
-      set startx pxcor
-      set starty pycor
-    ]
-
-    setxy startx starty
+    let random-pond-patch one-of patches with [pcolor = blue]
+    setxy [pxcor] of random-pond-patch [pycor] of random-pond-patch
     set actual-pond-id [pond-id] of patch-here
-
   ]
 end
 
@@ -190,12 +178,12 @@ to load-buffers
   ; create the buffer zones around each pond
   ask patches with [is-center-of-pond = 1] [
     ask patches in-radius (pond-radius + 9.5) [
-      set pcolor 35
+      set pcolor brown
     ]
 
     ; repaint the ponds
     ask patches in-radius pond-radius [
-      set pcolor 105
+      set pcolor blue
 
     ]
   ]
@@ -253,7 +241,6 @@ to set-migrants
   let pond-iterator 0
   let sigmoids-midpoint capacity / 2
 
-
   while [pond-iterator < no-of-ponds] [
 
     let no-individuals count newts with [actual-pond-id = pond-iterator]
@@ -261,16 +248,15 @@ to set-migrants
     ; if less or equal 5 individuals are in the pond, they do not migrate
     let prob 0
 
-    ; if more than 5 individuals are present, then density dependent migration
+    ; if more than 5 individuals are present, then density dependent juvenile migration
     if no-individuals > 5
     [
       set prob 1 / ( 1 + e ^ (-0.1 * (no-individuals - sigmoids-midpoint)) )
-    ]
 
-     ; juvenile migration
-    ask newts with [actual-pond-id = pond-iterator and age < 3]
-    [
-      if random-float 1 <= prob [set should-migrate true]
+      ask newts with [actual-pond-id = pond-iterator and age < 3]
+      [
+        if random-float 1 <= prob [set should-migrate true]
+      ]
     ]
 
     ; adult migration
@@ -289,114 +275,31 @@ to move-to-adjacent-forest
   ; move to forest patch around pond
   ask newts with [should-migrate]
   [
-    let my-pond-id actual-pond-id
-    let new-x 0
-    let new-y 0
-
     ; select one forest patch around the pond
-
+    let my-pond-id actual-pond-id
     let center-patch one-of patches with [is-center-of-pond = 1 and pond-id = my-pond-id]
-    ;print (word "center patch: "center-patch " " my-pond-id)
+    let forest-patch-around 0
+
     ask center-patch
     [
-      ask one-of patches in-radius (pond-radius + 1) with [pcolor = 35]
-      [
-        set new-x pxcor
-        set new-y pycor
-      ]
+      set forest-patch-around one-of patches in-radius (pond-radius + 1) with [pcolor = brown]
     ]
 
-    ; move to one forest patch around pond
-    set xcor new-x
-    set ycor new-y
-    ;print (word "adjacent forest")
+    move-to forest-patch-around
     set heading towards  center-patch - 180
-
   ]
 end
 
 to stochastic-movement
-
-  let vision 140
-  let random-influence-in-forest 0.05
-
   ; random walk
   ask newts with [should-migrate]
   [
-    let last-direction heading
     let migration-energy movement-energy
 
-    ; walk----------------------------------------------------------------------------
-    while [(migration-energy > 0) and (pcolor != 105)]
+    while [(migration-energy > 0) and (pcolor != blue)]
     [
-
-      let is-forest-in-front any? patches in-cone 1 vision with [pcolor = 35 and distance myself > 0]
-      ifelse is-forest-in-front = false
-      [
-        ; direction only influenced by last direction
-        set heading random-normal last-direction 10
-      ] ; end of no forest
-
-      [ ; there is forest in front of the newt
-
-        let forest-patches patches in-cone 3 vision with [pcolor = 35]
-
-        ;print (word "stochastic movement")
-        ;let forest-heading towards one-of forest-patches with [distance myself > 0]
-
-        ;;;;;;;;;;;;;;;;;;;,
-        let x-coords []
-        let y-coords []
-
-        ask forest-patches with [distance myself > 0]
-        [
-          set x-coords lput pxcor x-coords
-          set y-coords lput pycor y-coords
-        ]
-
-        let headings []
-        let patch-iterator 0
-        while [patch-iterator < count forest-patches with [distance myself > 0]]
-        [
-          set headings lput towards one-of forest-patches with [pxcor = item patch-iterator x-coords and pycor = item patch-iterator y-coords] headings
-          set patch-iterator patch-iterator + 1
-        ]
-
-        ;print headings
-
-        let forest-heading mean headings
-        ;;;;;;;;;;;;;;;;;
-
-        ; random heading
-        let random-heading random-normal last-direction 10
-
-
-        let diff subtract-headings forest-heading random-heading
-        let new-heading random-heading + diff *  (1 - random-influence-in-forest)
-
-        ;print (word random-heading "  " forest-heading "  "  diff)
-
-        set heading new-heading
-      ] ; end of forest in front
-
-       ; move
-        forward 1
-
-      ; save the current direction
-      set last-direction heading
-
-
-      ; cost for moving over crop field
-      if pcolor = 55
-      [
-        set migration-energy migration-energy - cropland-movement-cost
-      ]
-
-      ; cost for moving over forest
-      if pcolor = 35
-      [
-        set migration-energy migration-energy - woodland-movement-cost
-      ]
+      let energy-loss walk
+      set migration-energy migration-energy - energy-loss
 
     ] ; end of random walk
 
@@ -411,13 +314,103 @@ to stochastic-movement
       let new-pond-id [pond-id] of patch-here
       set actual-pond-id new-pond-id
 
-      ;let selected-patch one-of patches with [pond-id = new-pond-id]
-      ;setxy [pxcor] of selected-patch [pycor] of selected-patch
+    ]  ; end of found a new pond
+  ] ; end of ask newts
+end
 
+to-report walk
+      set-heading
 
+      ; move
+      forward 1
 
-    ]  ; end of if stays on blue patch
+      ; cost for moving over crop field
+      if pcolor = green
+      [
+        report cropland-movement-cost
+      ]
+
+      ; cost for moving over forest
+      if pcolor = brown
+      [
+        report woodland-movement-cost
+      ]
+
+      ; no cost if newt reaches pond
+      if pcolor = blue
+      [
+        report 0
+      ]
+
+end
+
+to set-heading
+  let pond-patches patches in-cone distance-for-viewing-ponds-and-woodland angle-for-viewing-ponds-and-woodland with [pcolor = blue and distance myself > 0]
+  let is-pond-in-front any? pond-patches
+
+  ifelse is-pond-in-front
+  [
+    set heading towards one-of pond-patches
   ]
+
+  [ ; start no pond in front
+
+    let woodland-patches patches in-cone distance-for-viewing-ponds-and-woodland angle-for-viewing-ponds-and-woodland with [pcolor = brown and distance myself > 0]
+    let is-woodland-in-front any? woodland-patches
+
+    ifelse is-woodland-in-front
+    [
+      set-heading-woodland woodland-patches
+
+    ] ; end of woodland in front
+
+    [
+      ; no woodland or pond in front
+      ; direction only influenced by last direction
+      set heading random-normal heading 10
+
+    ] ; end of no woodland or pond in front
+
+  ] ; end of no pond in front
+end
+
+to set-heading-woodland [woodland-patches]
+      let woodland-heading 0
+
+      ifelse movement-in-forest = "one forest patch"
+      [
+        ;print (word "choose randomly one forest patch")
+        set woodland-heading towards one-of woodland-patches with [distance myself > 0]
+      ] ; end of choosing heading towards one forest patch
+
+      [
+        ;print (word "mean of forest patches")
+        let x-coords []
+        let y-coords []
+
+        ask woodland-patches with [distance myself > 0]
+        [
+          set x-coords lput pxcor x-coords
+          set y-coords lput pycor y-coords
+        ]
+
+        let headings []
+        let patch-iterator 0
+        while [patch-iterator < count woodland-patches with [distance myself > 0]]
+        [
+          set headings lput towards one-of woodland-patches with [pxcor = item patch-iterator x-coords and pycor = item patch-iterator y-coords] headings
+          set patch-iterator patch-iterator + 1
+        ]
+
+        set woodland-heading mean headings
+
+      ] ; end of choosing mean forest heading
+
+      ; random heading
+      let random-heading random-normal heading 10
+
+      let diff subtract-headings woodland-heading random-heading
+      set heading  random-heading + diff *  (1 - 0.05) ; random-influence-in-forest 0.05
 end
 
 
@@ -618,13 +611,12 @@ end
 to-report total-newts
   report count newts
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-414
-26
-936
-549
+587
+55
+1109
+578
 -1
 -1
 1.287
@@ -712,10 +704,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1081
-16
-1479
-253
+1262
+66
+1660
+303
 Timeseries
 time
 population size of newts
@@ -737,10 +729,10 @@ PENS
 "pond-6" 1.0 0 -10899396 true "" ""
 
 TEXTBOX
-22
-153
-172
-187
+23
+166
+173
+200
 reproduction & mortality
 14
 0.0
@@ -757,10 +749,10 @@ initialization
 1
 
 MONITOR
-1501
-25
-1670
-70
+1682
+75
+1851
+120
 Number of occupied ponds
 occupied-ponds
 0
@@ -790,13 +782,13 @@ CHOOSER
 scenario
 scenario
 "corridors" "buffers"
-1
+0
 
 PLOT
-1082
-267
-1478
-506
+1263
+317
+1659
+556
 Migration
 time
 Number of migrants
@@ -856,20 +848,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-36
+25
+450
+175
 468
-186
-486
 migration\n
 12
 0.0
 1
 
 SLIDER
-25
-545
-257
-578
+22
+518
+329
+551
 woodland-movement-cost
 woodland-movement-cost
 0
@@ -877,14 +869,14 @@ woodland-movement-cost
 1.0
 1
 1
-NIL
+per patch
 HORIZONTAL
 
 SLIDER
-25
-589
-251
-622
+22
+562
+323
+595
 cropland-movement-cost
 cropland-movement-cost
 0
@@ -892,22 +884,62 @@ cropland-movement-cost
 5.0
 1
 1
-NIL
+per patch
 HORIZONTAL
 
 SLIDER
-24
-500
-219
-533
+21
+473
+280
+506
 movement-energy
 movement-energy
 0
 1000
-750.0
+748.0
 1
 1
-NIL
+per year
+HORIZONTAL
+
+CHOOSER
+20
+609
+220
+654
+movement-in-forest
+movement-in-forest
+"one forest patch" "mean forest patches"
+1
+
+SLIDER
+21
+669
+375
+702
+distance-for-viewing-ponds-and-woodland
+distance-for-viewing-ponds-and-woodland
+1
+5
+3.0
+1
+1
+patches
+HORIZONTAL
+
+SLIDER
+22
+711
+419
+744
+angle-for-viewing-ponds-and-woodland
+angle-for-viewing-ponds-and-woodland
+1
+360
+140.0
+1
+1
+degrees
 HORIZONTAL
 
 @#$#@#$#@
