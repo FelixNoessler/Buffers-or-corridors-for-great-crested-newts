@@ -187,29 +187,31 @@ to set-migrants
 
     let no-individuals count newts with [actual-pond-id = pond-iterator]
 
-    ; ------- juvenile migration
-    ; if more than 5 individuals are present,
-    ; then density dependent juvenile migration
+
     if no-individuals > 5
     [
-      let prob 1 / ( 1 + e ^ (-0.1 * (no-individuals - capacity / 2)) )
+
+      ; ------- juvenile migration
+      ; if more than 5 individuals are present,
+      ; then density dependent juvenile migration
+      let juvenile-prob 1 / ( 1 + e ^ (-0.1 * (no-individuals - capacity / 2)) )
 
       ask newts with [actual-pond-id = pond-iterator and age < 3]
       [
-        if random-float 1 <= prob [set should-migrate true]
+        if random-float 1 <= juvenile-prob [set should-migrate true]
+      ]
+
+      ; ------- adult migration
+      ; if more than 5 individuals are present,
+      ; then migration with probability of 1 %
+      let adult-prob 0.01
+
+      ask newts with [actual-pond-id = pond-iterator and age >= 3]
+      [
+        if random-float 1 <= adult-prob [set should-migrate true]
       ]
     ]
 
-    ; ------- adult migration
-    ; if more than 5 individuals are present,
-    ; then migration with probability of 1 %
-    if no-individuals > 5
-    [
-      ask newts with [age >= 3]
-      [
-        if random-float 1 <= 0.01 [set should-migrate true]
-      ]
-    ]
     set pond-iterator pond-iterator + 1
   ]
 end
@@ -640,7 +642,7 @@ number-of-startind
 number-of-startind
 1
 100
-30.0
+38.0
 1
 1
 NIL
@@ -869,7 +871,7 @@ distance-for-viewing-ponds-and-woodland
 distance-for-viewing-ponds-and-woodland
 1
 5
-2.0
+1.0
 1
 1
 patches
@@ -898,7 +900,7 @@ CHOOSER
 current-scenario
 current-scenario
 "corridors" "buffers"
-1
+0
 
 SWITCH
 26
