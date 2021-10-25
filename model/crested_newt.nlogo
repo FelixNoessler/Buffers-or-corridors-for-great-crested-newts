@@ -1,17 +1,25 @@
-extensions [gis]
+extensions
+[
+  shell
+  gis
+]
 
 globals
 [
   pond-radius
   no-of-ponds
+  newts-corridor-scenario
+  newts-buffer-scenario
+  path
+  first-scenario
 ]
+
 patches-own
 [
   pond-id
   is-center-of-pond  ; 0 or 1
 ]
 
-turtles-own []
 breed [newts newt]
 
 newts-own
@@ -29,20 +37,26 @@ to setup
   ca
   reset-ticks
 
-  set pond-radius 15
+  ; ------ id of this run and path for landscape files
+  ; get random id for each simulation
+  let scenario-no random 1000000000000000
+  ; or get process ids from pythons
+  ;let scenario-no (shell:exec "python3" "-c" "import os; print(str(os.getpid()))")
+  set path (word "gis_output/" scenario-no "/")
+  set first-scenario True
+
+
+  ; ------ landscape
   set no-of-ponds 7
-
-  ;create-and-export-raster
-
-  ifelse scenario = "corridors"
-  [load-corridors]
-  [load-buffers]
-
-
+  set pond-radius 15
+  print(shell:exec "python3" "create_landscape.py" (word scenario-no) (word no-of-ponds) (word pond-radius))
+  load-general-landscape
+  if current-scenario = "buffers" [load-buffers]
+  if current-scenario = "corridors" [load-corridors]
   ask patches with [is-center-of-pond = 1] [set plabel pond-id]
 
+  ; ------ population initialization
   start-population
-
 end
 
 
@@ -58,15 +72,81 @@ to go
   plot-timeseries
   plot-migration
 
-  if ticks = 100 or not any? newts [stop]
   tick
 
+  if ticks = max-timesteps or not any? newts
+  [
+    ;------------ continue with other scenario
+    ifelse both-scenarios and first-scenario
+    [
+      set first-scenario False
+
+      ifelse current-scenario = "corridors"
+      [
+        set newts-corridor-scenario count newts
+        clear-all-plots
+        ask newts [die]
+        set current-scenario "buffers"
+        load-buffers
+        start-population
+        reset-ticks
+
+      ]
+
+      ; current-scenario = "buffers"
+      [
+        set newts-buffer-scenario count newts
+        clear-all-plots
+        ask newts [die]
+        set current-scenario "corridors"
+        load-corridors
+        start-population
+        reset-ticks
+      ]
+
+    ]
+
+    ;------------ else stop simulation
+    [
+      ifelse current-scenario = "corridors"
+      [
+        set newts-corridor-scenario count newts
+      ]
+      ; current-scenario = "buffers"
+      [
+        set newts-buffer-scenario count newts
+      ]
+
+      print(shell:exec "rm" "-r" path)
+      stop
+    ]
+  ]
 end
 
 
 ;-------------------------------------------------------------------------------
 ;- initialization
 ;-------------------------------------------------------------------------------
+to load-general-landscape
+  gis:set-world-envelope (list min-pxcor max-pxcor min-pycor max-pycor)
+
+  let is-center-of-pond-raster gis:load-dataset (word path "center.asc")
+  gis:apply-raster is-center-of-pond-raster is-center-of-pond
+
+  let pond-id-raster gis:load-dataset (word path "id.asc")
+  gis:apply-raster pond-id-raster pond-id
+end
+
+to load-corridors
+  let created-landscape gis:load-dataset (word path "corridors.asc")
+  gis:apply-raster created-landscape pcolor
+end
+
+to load-buffers
+    let created-landscape gis:load-dataset (word path "buffers.asc")
+    gis:apply-raster created-landscape pcolor
+end
+
 to start-population
   create-newts number-of-startind
   [
@@ -76,154 +156,21 @@ to start-population
     set age random 16
     set should-migrate false
 
-    let random-pond-patch one-of patches with [pcolor = blue]
+    ; --- choose random pond patch
+    let random-pond-patch 0
+    ifelse one-pond-without-starting-newts
+    [
+      set random-pond-patch one-of patches with [pcolor = blue and pond-id != 1]
+    ]
+    [
+      set random-pond-patch one-of patches with [pcolor = blue]
+    ]
+
     setxy [pxcor] of random-pond-patch [pycor] of random-pond-patch
     set actual-pond-id [pond-id] of patch-here
   ]
 end
 
-
-to create-ponds-with-coordinates
-
-  let x-coords [324 240 378 128 151 190 263 378] ;[263 190  378]
-  let y-coords [29 177 180 372 131 232 330 180] ;[330 180 232 ]
-
-  let pond-iterator 0
-
-  while [pond-iterator < 7]
-  [
-
-    let x-coord item pond-iterator x-coords
-    let y-coord item pond-iterator y-coords
-
-    ask patch x-coord y-coord
-    [
-     set is-center-of-pond 1
-
-     ask patches in-radius pond-radius
-        [
-          set pcolor blue
-          set pond-id pond-iterator
-        ]
-    ]
-     set pond-iterator  pond-iterator + 1
-
-  ]
-
-end
-
-to create-nice-ponds
-
-  let attempts-in-creating-ponds 0
-  let pond-number-created 0
-
-  while [attempts-in-creating-ponds < 500 and pond-number-created < no-of-ponds]
-  [
-
-    ; try if the randomly selected middle point has enough space
-    ; around for building a pond
-    let random-green-patch one-of patches with [pcolor = green]
-    let all-patches-in-radius-green true
-
-    ask random-green-patch
-    [
-      ask patches in-radius (pond-radius + 1)
-      [
-        if pcolor != green [set all-patches-in-radius-green false]
-      ]
-    ]
-
-
-    ; make the actual pond and increase the number of created ponds + 1
-    if all-patches-in-radius-green
-    [
-
-      ; make the pond blue and give all patches a pond-id
-      ask random-green-patch [
-
-        set is-center-of-pond 1
-
-        ask patches in-radius pond-radius
-        [
-          set pcolor blue
-          set pond-id pond-number-created
-        ]
-      ]
-
-      set pond-number-created pond-number-created + 1
-    ]
-
-    set attempts-in-creating-ponds attempts-in-creating-ponds + 1
-  ]
-
-end
-
-
-;-------------------------------------------------------------------------------
-;- GIS
-;-------------------------------------------------------------------------------
-to load-buffers
-  gis:set-world-envelope (list min-pxcor max-pxcor min-pycor max-pycor)
-
-  let created-landscape gis:load-dataset "gis_output/pcolor.asc"
-  gis:apply-raster created-landscape pcolor
-
-  let is-center-of-pond-raster gis:load-dataset "gis_output/is_center_of_pond.asc"
-  gis:apply-raster is-center-of-pond-raster is-center-of-pond
-
-  let pond-id-raster gis:load-dataset "gis_output/pond_id.asc"
-  gis:apply-raster pond-id-raster pond-id
-
-
-  ; create the buffer zones around each pond
-  ask patches with [is-center-of-pond = 1] [
-    ask patches in-radius (pond-radius + 9.5) [
-      set pcolor brown
-    ]
-
-    ; repaint the ponds
-    ask patches in-radius pond-radius [
-      set pcolor blue
-
-    ]
-  ]
-end
-
-to load-corridors
-  gis:set-world-envelope (list min-pxcor max-pxcor min-pycor max-pycor)
-
-  let created-landscape gis:load-dataset "gis_output/corridors.asc"
-  gis:apply-raster created-landscape pcolor
-
-  let is-center-of-pond-raster gis:load-dataset "gis_output/is_center_of_pond.asc"
-  gis:apply-raster is-center-of-pond-raster is-center-of-pond
-
-  let pond-id-raster gis:load-dataset "gis_output/pond_id.asc"
-  gis:apply-raster pond-id-raster  pond-id
-
-end
-
-to create-and-export-raster
-  ask patches
-  [
-    set pcolor green
-    set pond-id (- 999)
-    set is-center-of-pond 0
-  ]
-
-  create-ponds-with-coordinates
-
-  gis:set-world-envelope (list min-pxcor max-pxcor min-pycor max-pycor)
-
-  let pcolor-raster gis:patch-dataset pcolor
-  gis:store-dataset pcolor-raster "gis_output/pcolor.asc"
-
-  let is-center-of-pond-raster gis:patch-dataset is-center-of-pond
-  gis:store-dataset is-center-of-pond-raster "gis_output/is_center_of_pond.asc"
-
-  let pond-id-raster gis:patch-dataset pond-id
-  gis:store-dataset pond-id-raster "gis_output/pond_id.asc"
-end
 
 
 ;-------------------------------------------------------------------------------
@@ -237,21 +184,18 @@ end
 
 to set-migrants
   ask newts [set should-migrate false]
-
   let pond-iterator 0
-  let sigmoids-midpoint capacity / 2
 
   while [pond-iterator < no-of-ponds] [
 
     let no-individuals count newts with [actual-pond-id = pond-iterator]
 
-    ; if less or equal 5 individuals are in the pond, they do not migrate
-    let prob 0
-
-    ; if more than 5 individuals are present, then density dependent juvenile migration
+    ; ------- juvenile migration
+    ; if more than 5 individuals are present,
+    ; then density dependent juvenile migration
     if no-individuals > 5
     [
-      set prob 1 / ( 1 + e ^ (-0.1 * (no-individuals - sigmoids-midpoint)) )
+      let prob 1 / ( 1 + e ^ (-0.1 * (no-individuals - capacity / 2)) )
 
       ask newts with [actual-pond-id = pond-iterator and age < 3]
       [
@@ -259,7 +203,9 @@ to set-migrants
       ]
     ]
 
-    ; adult migration
+    ; ------- adult migration
+    ; if more than 5 individuals are present,
+    ; then migration with probability of 1 %
     if no-individuals > 5
     [
       ask newts with [age >= 3]
@@ -296,6 +242,8 @@ to stochastic-movement
   [
     let migration-energy movement-energy
 
+    ; ----walking loop
+    ; as long as energy is sufficient or until found a pond
     while [(migration-energy > 0) and (pcolor != blue)]
     [
       let energy-loss walk
@@ -309,12 +257,12 @@ to stochastic-movement
       die
     ]
 
+    ; found a pond
     [
-      ; found a new pond
       let new-pond-id [pond-id] of patch-here
       set actual-pond-id new-pond-id
 
-    ]  ; end of found a new pond
+    ]  ; end of found a pond
   ] ; end of ask newts
 end
 
@@ -421,7 +369,7 @@ to reproduce
   ask newts
   [
     ; reproduction is only possible at an age of 3 or greate
-    ; and if the codnitions are right (reproduction-prob)
+    ; and if the codnitions are right
     if (age >= 3)
     [
       ; mean 5 fertile juveniles
@@ -487,7 +435,7 @@ to random-mortality
       let mortality-prob-juveniles (random-float mean-juvenile-mortality-prob * 0.8)  +   mean-juvenile-mortality-prob * 0.6
 
       ; decrease mortality in the buffer scenario
-      if scenario = "buffers"
+      if current-scenario = "buffers"
       [
         set mortality-prob-juveniles mortality-prob-juveniles - mortality-prob-juveniles * mortality-decrease-with-buffer
       ]
@@ -501,7 +449,7 @@ to random-mortality
       let mortality-prob-adults (random-float mean-adult-mortality-prob * 0.7)  + mean-adult-mortality-prob * 0.65
 
       ; decrease mortality in the buffer scenario
-       if scenario = "buffers"
+       if current-scenario = "buffers"
       [
         set mortality-prob-adults mortality-prob-adults - mortality-prob-adults * mortality-decrease-with-buffer
       ]
@@ -515,7 +463,6 @@ end
 ;-------------------------------------------------------------------------------
 ;- ageing
 ;-------------------------------------------------------------------------------
-
 to ageing
   ask newts [set age age + 1]
 end
@@ -541,7 +488,7 @@ end
 
 to plot-migration
   set-current-plot "Migration"
-  plot count newts with [should-migrate]
+  plot no-of-migrants
 end
 
 to plot-timeseries
@@ -579,37 +526,13 @@ to plot-timeseries
 
 end
 
-
-to-report pond0
-  report count newts with [actual-pond-id = 0]
+to-report newts-buffer
+  report newts-buffer-scenario
 end
 
-to-report pond1
-  report count newts with [actual-pond-id = 1]
-end
 
-to-report pond2
-  report count newts with [actual-pond-id = 2]
-end
-
-to-report pond3
-  report count newts with [actual-pond-id = 3]
-end
-
-to-report pond4
-  report count newts with [actual-pond-id = 4]
-end
-
-to-report pond5
-  report count newts with [actual-pond-id = 5]
-end
-
-to-report pond6
-  report count newts with [actual-pond-id = 6]
-end
-
-to-report total-newts
-  report count newts
+to-report newts-corridor
+  report newts-corridor-scenario
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -640,10 +563,10 @@ ticks
 30.0
 
 BUTTON
-264
-40
-337
-73
+398
+42
+471
+75
 NIL
 setup\n
 NIL
@@ -657,10 +580,10 @@ NIL
 1
 
 BUTTON
-266
-103
-329
-136
+400
+84
+463
+117
 NIL
 go
 T
@@ -674,25 +597,25 @@ NIL
 1
 
 SLIDER
-21
-101
-213
-134
+25
+155
+217
+188
 number-of-startind
 number-of-startind
 1
 100
-50.0
+64.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-19
-209
-265
-242
+17
+271
+263
+304
 capacity
 capacity
 5
@@ -729,30 +652,30 @@ PENS
 "pond-6" 1.0 0 -10899396 true "" ""
 
 TEXTBOX
-23
-166
-173
-200
+21
+228
+171
+262
 reproduction & mortality
 14
 0.0
 0
 
 TEXTBOX
-26
-20
-176
-38
+28
+17
+178
+35
 initialization
 14
 0.0
 1
 
 MONITOR
-1682
-75
-1851
-120
+1674
+68
+1843
+113
 Number of occupied ponds
 occupied-ponds
 0
@@ -760,10 +683,10 @@ occupied-ponds
 11
 
 SLIDER
-18
-259
-267
-292
+16
+321
+265
+354
 mortality-decrease-with-buffer
 mortality-decrease-with-buffer
 0
@@ -773,16 +696,6 @@ mortality-decrease-with-buffer
 1
 NIL
 HORIZONTAL
-
-CHOOSER
-19
-43
-157
-88
-scenario
-scenario
-"corridors" "buffers"
-0
 
 PLOT
 1263
@@ -803,10 +716,10 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 SLIDER
-18
-310
-270
-343
+16
+372
+268
+405
 mean-adult-mortality-prob
 mean-adult-mortality-prob
 0
@@ -818,10 +731,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-17
-353
-272
-386
+15
+415
+270
+448
 mean-juvenile-mortality-prob
 mean-juvenile-mortality-prob
 0
@@ -833,10 +746,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-17
-399
-270
-432
+15
+461
+268
+494
 mean-number-of-female-offspring
 mean-number-of-female-offspring
 0
@@ -848,20 +761,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-25
-450
-175
-468
+23
+512
+173
+530
 migration\n
 12
 0.0
 1
 
 SLIDER
-22
-518
-329
-551
+20
+580
+327
+613
 woodland-movement-cost
 woodland-movement-cost
 0
@@ -873,10 +786,10 @@ per patch
 HORIZONTAL
 
 SLIDER
-22
-562
-323
-595
+20
+624
+321
+657
 cropland-movement-cost
 cropland-movement-cost
 0
@@ -888,10 +801,10 @@ per patch
 HORIZONTAL
 
 SLIDER
-21
-473
-280
-506
+19
+535
+278
+568
 movement-energy
 movement-energy
 0
@@ -903,35 +816,35 @@ per year
 HORIZONTAL
 
 CHOOSER
-20
-609
-220
-654
+18
+671
+218
+716
 movement-in-forest
 movement-in-forest
 "one forest patch" "mean forest patches"
 1
 
 SLIDER
-21
-669
-375
-702
+19
+731
+373
+764
 distance-for-viewing-ponds-and-woodland
 distance-for-viewing-ponds-and-woodland
 1
 5
-3.0
+2.0
 1
 1
 patches
 HORIZONTAL
 
 SLIDER
-22
-711
-419
-744
+20
+773
+417
+806
 angle-for-viewing-ponds-and-woodland
 angle-for-viewing-ponds-and-woodland
 1
@@ -941,6 +854,49 @@ angle-for-viewing-ponds-and-woodland
 1
 degrees
 HORIZONTAL
+
+CHOOSER
+25
+90
+169
+135
+current-scenario
+current-scenario
+"corridors" "buffers"
+0
+
+SWITCH
+26
+43
+191
+76
+both-scenarios
+both-scenarios
+0
+1
+-1000
+
+INPUTBOX
+225
+44
+345
+104
+max-timesteps
+5.0
+1
+0
+Number
+
+SWITCH
+239
+157
+501
+190
+one-pond-without-starting-newts
+one-pond-without-starting-newts
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1289,64 +1245,11 @@ NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="capacity" repetitions="20" runMetricsEveryStep="false">
+  <experiment name="experiment" repetitions="24" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <metric>total-newts</metric>
-    <metric>occupied-ponds</metric>
-    <metric>pond0</metric>
-    <metric>pond1</metric>
-    <metric>pond2</metric>
-    <metric>pond3</metric>
-    <metric>pond4</metric>
-    <metric>pond5</metric>
-    <metric>pond6</metric>
-    <enumeratedValueSet variable="capacity">
-      <value value="30"/>
-      <value value="60"/>
-      <value value="90"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-juvenile-mortality-prob">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mortality-decrease-with-buffer">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="number-of-startind">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="movement-energy">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cropland-movement-cost">
-      <value value="5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="woodland-movement-cost">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-number-of-female-offspring">
-      <value value="2.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="scenario">
-      <value value="&quot;buffers&quot;"/>
-      <value value="&quot;corridors&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-adult-mortality-prob">
-      <value value="0.18"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="energy" repetitions="20" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <metric>total-newts</metric>
-    <metric>occupied-ponds</metric>
-    <metric>pond0</metric>
-    <metric>pond1</metric>
-    <metric>pond2</metric>
-    <metric>pond3</metric>
-    <metric>pond4</metric>
-    <metric>pond5</metric>
-    <metric>pond6</metric>
+    <metric>newts-buffer</metric>
+    <metric>newts-corridor</metric>
     <enumeratedValueSet variable="capacity">
       <value value="30"/>
     </enumeratedValueSet>
@@ -1359,11 +1262,17 @@ NetLogo 6.2.0
     <enumeratedValueSet variable="number-of-startind">
       <value value="50"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-for-viewing-ponds-and-woodland">
+      <value value="3"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="movement-energy">
-      <value value="100"/>
-      <value value="300"/>
-      <value value="500"/>
-      <value value="1000"/>
+      <value value="748"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-in-forest">
+      <value value="&quot;mean forest patches&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="angle-for-viewing-ponds-and-woodland">
+      <value value="140"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="cropland-movement-cost">
       <value value="5"/>
@@ -1376,59 +1285,6 @@ NetLogo 6.2.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="scenario">
       <value value="&quot;buffers&quot;"/>
-      <value value="&quot;corridors&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-adult-mortality-prob">
-      <value value="0.18"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="scenarios" repetitions="1" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <metric>total-newts</metric>
-    <metric>occupied-ponds</metric>
-    <metric>pond0</metric>
-    <metric>pond1</metric>
-    <metric>pond2</metric>
-    <metric>pond3</metric>
-    <metric>pond4</metric>
-    <metric>pond5</metric>
-    <metric>pond6</metric>
-    <enumeratedValueSet variable="capacity">
-      <value value="30"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-juvenile-mortality-prob">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mortality-decrease-with-buffer">
-      <value value="0"/>
-      <value value="0.02"/>
-      <value value="0.06"/>
-      <value value="0.08"/>
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="number-of-startind">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="movement-energy">
-      <value value="50"/>
-      <value value="250"/>
-      <value value="500"/>
-      <value value="750"/>
-      <value value="1000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cropland-movement-cost">
-      <value value="5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="woodland-movement-cost">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-number-of-female-offspring">
-      <value value="2.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="scenario">
-      <value value="&quot;buffers&quot;"/>
-      <value value="&quot;corridors&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="mean-adult-mortality-prob">
       <value value="0.18"/>
