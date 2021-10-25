@@ -8,10 +8,16 @@ globals
 [
   pond-radius
   no-of-ponds
-  newts-corridor-scenario
-  newts-buffer-scenario
   path
   first-scenario
+
+  ; output numbers
+  newts-corridor-scenario
+  newts-buffer-scenario
+  occupied-ponds-corridor-scenario
+  occupied-ponds-buffer-scenario
+  newts-pond1-corridor-scenario
+  netws-pond1-buffer-scenario
 ]
 
 patches-own
@@ -39,6 +45,7 @@ to setup
 
   ; ------ id of this run and path for landscape files
   ; get random id for each simulation
+  ; this is only important for parallel runs
   let scenario-no random 1000000000000000
   ; or get process ids from pythons
   ;let scenario-no (shell:exec "python3" "-c" "import os; print(str(os.getpid()))")
@@ -76,6 +83,8 @@ to go
 
   if ticks = max-timesteps or not any? newts
   [
+    set-output-numbers
+
     ;------------ continue with other scenario
     ifelse both-scenarios and first-scenario
     [
@@ -83,7 +92,6 @@ to go
 
       ifelse current-scenario = "corridors"
       [
-        set newts-corridor-scenario count newts
         clear-all-plots
         ask newts [die]
         set current-scenario "buffers"
@@ -95,7 +103,6 @@ to go
 
       ; current-scenario = "buffers"
       [
-        set newts-buffer-scenario count newts
         clear-all-plots
         ask newts [die]
         set current-scenario "corridors"
@@ -103,20 +110,10 @@ to go
         start-population
         reset-ticks
       ]
-
     ]
 
     ;------------ else stop simulation
     [
-      ifelse current-scenario = "corridors"
-      [
-        set newts-corridor-scenario count newts
-      ]
-      ; current-scenario = "buffers"
-      [
-        set newts-buffer-scenario count newts
-      ]
-
       print(shell:exec "rm" "-r" path)
       stop
     ]
@@ -467,9 +464,25 @@ to ageing
   ask newts [set age age + 1]
 end
 
+
 ;-------------------------------------------------------------------------------
-;- plotting
+;- preparing model output
 ;-------------------------------------------------------------------------------
+to set-output-numbers
+  ifelse current-scenario = "corridors"
+  [
+    set newts-corridor-scenario count newts
+    set occupied-ponds-corridor-scenario occupied-ponds
+    set newts-pond1-corridor-scenario count newts with [pond-id = 1]
+  ]
+  ; current-scenario = "buffers"
+  [
+    set newts-buffer-scenario count newts
+    set occupied-ponds-buffer-scenario occupied-ponds
+    set netws-pond1-buffer-scenario count newts with [pond-id = 1]
+  ]
+end
+
 to-report occupied-ponds
   let pond-iterator 0
   let no-occupied-ponds 0
@@ -482,6 +495,37 @@ to-report occupied-ponds
   report no-occupied-ponds
 end
 
+
+;-------------------------------------------------------------------------------
+;- model output reporter
+;-------------------------------------------------------------------------------
+to-report newts-buffer
+  report newts-buffer-scenario
+end
+
+to-report newts-corridor
+  report newts-corridor-scenario
+end
+
+to-report newts-corridor-pond1
+  report newts-pond1-corridor-scenario
+end
+
+to-report newts-buffer-pond1
+  report netws-pond1-buffer-scenario
+end
+
+to-report occupied-ponds-corridor
+  report occupied-ponds-corridor-scenario
+end
+
+to-report occupied-ponds-buffer
+  report occupied-ponds-buffer-scenario
+end
+
+;-------------------------------------------------------------------------------
+;- plotting and reporter on the interface
+;-------------------------------------------------------------------------------
 to-report no-of-migrants
   report count newts with [should-migrate]
 end
@@ -524,15 +568,6 @@ to plot-timeseries
   set-current-plot-pen "pond-6"
   plot count newts with [actual-pond-id = 6]
 
-end
-
-to-report newts-buffer
-  report newts-buffer-scenario
-end
-
-
-to-report newts-corridor
-  report newts-corridor-scenario
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -605,7 +640,7 @@ number-of-startind
 number-of-startind
 1
 100
-64.0
+30.0
 1
 1
 NIL
@@ -863,7 +898,7 @@ CHOOSER
 current-scenario
 current-scenario
 "corridors" "buffers"
-0
+1
 
 SWITCH
 26
@@ -1245,31 +1280,32 @@ NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="24" runMetricsEveryStep="false">
+  <experiment name="experiment" repetitions="12" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <metric>newts-buffer</metric>
     <metric>newts-corridor</metric>
+    <metric>newts-corridor-pond1</metric>
+    <metric>newts-buffer-pond1</metric>
+    <metric>occupied-ponds-corridor</metric>
+    <metric>occupied-ponds-buffer</metric>
     <enumeratedValueSet variable="capacity">
       <value value="30"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="mean-juvenile-mortality-prob">
       <value value="0.45"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="mortality-decrease-with-buffer">
-      <value value="0.1"/>
-    </enumeratedValueSet>
     <enumeratedValueSet variable="number-of-startind">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="distance-for-viewing-ponds-and-woodland">
-      <value value="3"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="movement-energy">
-      <value value="748"/>
+      <value value="30"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="movement-in-forest">
       <value value="&quot;mean forest patches&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-timesteps">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-scenario">
+      <value value="&quot;corridors&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="angle-for-viewing-ponds-and-woodland">
       <value value="140"/>
@@ -1280,11 +1316,23 @@ NetLogo 6.2.0
     <enumeratedValueSet variable="woodland-movement-cost">
       <value value="1"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="mortality-decrease-with-buffer">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-for-viewing-ponds-and-woodland">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-energy">
+      <value value="748"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="one-pond-without-starting-newts">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="both-scenarios">
+      <value value="true"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="mean-number-of-female-offspring">
       <value value="2.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="scenario">
-      <value value="&quot;buffers&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="mean-adult-mortality-prob">
       <value value="0.18"/>
