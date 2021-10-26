@@ -230,7 +230,15 @@ to move-to-adjacent-forest
       set forest-patch-around one-of patches in-radius (pond-radius + 1) with [pcolor = brown]
     ]
 
-    move-to forest-patch-around
+    ; it is theoretically posible to have no forest around
+    ; in the corridor scenario, for a pond that is very distant
+    ; to all other ponds
+    ifelse forest-patch-around != nobody [move-to forest-patch-around]
+    [
+      let field-patch-around one-of patches in-radius (pond-radius + 1) with [pcolor = green]
+      move-to field-patch-around
+    ]
+
     set heading towards  center-patch - 180
   ]
 end
@@ -596,7 +604,7 @@ GRAPHICS-WINDOW
 0
 0
 1
-ticks
+years
 30.0
 
 BUTTON
@@ -642,7 +650,7 @@ number-of-startind
 number-of-startind
 1
 100
-38.0
+15.0
 1
 1
 NIL
@@ -657,7 +665,7 @@ capacity
 capacity
 5
 100
-30.0
+20.0
 1
 1
 NIL
@@ -728,7 +736,7 @@ mortality-decrease-with-buffer
 mortality-decrease-with-buffer
 0
 0.3
-0.1
+0.15
 0.01
 1
 NIL
@@ -761,7 +769,7 @@ mean-adult-mortality-prob
 mean-adult-mortality-prob
 0
 1
-0.18
+0.2
 0.01
 1
 NIL
@@ -776,7 +784,7 @@ mean-juvenile-mortality-prob
 mean-juvenile-mortality-prob
 0
 1
-0.45
+0.5
 0.01
 1
 NIL
@@ -791,7 +799,7 @@ mean-number-of-female-offspring
 mean-number-of-female-offspring
 0
 15
-2.5
+5.0
 0.1
 1
 NIL
@@ -846,7 +854,7 @@ movement-energy
 movement-energy
 0
 1000
-748.0
+700.0
 1
 1
 per year
@@ -871,7 +879,7 @@ distance-for-viewing-ponds-and-woodland
 distance-for-viewing-ponds-and-woodland
 1
 5
-1.0
+4.0
 1
 1
 patches
@@ -900,7 +908,7 @@ CHOOSER
 current-scenario
 current-scenario
 "corridors" "buffers"
-0
+1
 
 SWITCH
 26
@@ -919,7 +927,7 @@ INPUTBOX
 345
 104
 max-timesteps
-5.0
+50.0
 1
 0
 Number
@@ -931,7 +939,7 @@ SWITCH
 190
 one-pond-without-starting-newts
 one-pond-without-starting-newts
-0
+1
 1
 -1000
 
@@ -1338,6 +1346,135 @@ NetLogo 6.2.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="mean-adult-mortality-prob">
       <value value="0.18"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment" repetitions="20" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>newts-buffer</metric>
+    <metric>newts-corridor</metric>
+    <metric>newts-corridor-pond1</metric>
+    <metric>newts-buffer-pond1</metric>
+    <metric>occupied-ponds-corridor</metric>
+    <metric>occupied-ponds-buffer</metric>
+    <enumeratedValueSet variable="capacity">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-juvenile-mortality-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-of-startind">
+      <value value="15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-in-forest">
+      <value value="&quot;mean forest patches&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-timesteps">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-scenario">
+      <value value="&quot;corridors&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cropland-movement-cost">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="angle-for-viewing-ponds-and-woodland">
+      <value value="140"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="woodland-movement-cost">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mortality-decrease-with-buffer">
+      <value value="0.05"/>
+      <value value="0.075"/>
+      <value value="0.1"/>
+      <value value="0.125"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-for-viewing-ponds-and-woodland">
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-energy">
+      <value value="700"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="one-pond-without-starting-newts">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="both-scenarios">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-number-of-female-offspring">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-adult-mortality-prob">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment_2" repetitions="20" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>newts-buffer</metric>
+    <metric>newts-corridor</metric>
+    <metric>newts-corridor-pond1</metric>
+    <metric>newts-buffer-pond1</metric>
+    <metric>occupied-ponds-corridor</metric>
+    <metric>occupied-ponds-buffer</metric>
+    <enumeratedValueSet variable="capacity">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-juvenile-mortality-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-of-startind">
+      <value value="15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-in-forest">
+      <value value="&quot;mean forest patches&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-timesteps">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-scenario">
+      <value value="&quot;corridors&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cropland-movement-cost">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="angle-for-viewing-ponds-and-woodland">
+      <value value="140"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="woodland-movement-cost">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mortality-decrease-with-buffer">
+      <value value="0.05"/>
+      <value value="0.075"/>
+      <value value="0.1"/>
+      <value value="0.125"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-for-viewing-ponds-and-woodland">
+      <value value="1.5"/>
+      <value value="2.5"/>
+      <value value="3.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-energy">
+      <value value="700"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="one-pond-without-starting-newts">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="both-scenarios">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-number-of-female-offspring">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-adult-mortality-prob">
+      <value value="0.2"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
