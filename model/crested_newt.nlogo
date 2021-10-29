@@ -81,7 +81,7 @@ to go
 
   tick
 
-  if ticks = max-timesteps or not any? newts
+  if ticks = max-timesteps ;or not any? newts
   [
     set-output-numbers
 
@@ -1285,7 +1285,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.2.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1460,6 +1460,74 @@ NetLogo 6.2.0
       <value value="1.5"/>
       <value value="2.5"/>
       <value value="3.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-energy">
+      <value value="700"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="one-pond-without-starting-newts">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="both-scenarios">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-number-of-female-offspring">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-adult-mortality-prob">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="more_data" repetitions="40" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>newts-buffer</metric>
+    <metric>newts-corridor</metric>
+    <metric>newts-corridor-pond1</metric>
+    <metric>newts-buffer-pond1</metric>
+    <metric>occupied-ponds-corridor</metric>
+    <metric>occupied-ponds-buffer</metric>
+    <enumeratedValueSet variable="capacity">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-juvenile-mortality-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-of-startind">
+      <value value="15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-in-forest">
+      <value value="&quot;mean forest patches&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-timesteps">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-scenario">
+      <value value="&quot;corridors&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cropland-movement-cost">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="angle-for-viewing-ponds-and-woodland">
+      <value value="140"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="woodland-movement-cost">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mortality-decrease-with-buffer">
+      <value value="0.05"/>
+      <value value="0.075"/>
+      <value value="0.1"/>
+      <value value="0.125"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-for-viewing-ponds-and-woodland">
+      <value value="1"/>
+      <value value="1.5"/>
+      <value value="2"/>
+      <value value="2.5"/>
+      <value value="3"/>
+      <value value="3.5"/>
+      <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="movement-energy">
       <value value="700"/>
