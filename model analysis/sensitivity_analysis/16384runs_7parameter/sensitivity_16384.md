@@ -61,6 +61,14 @@ Corridor:
 
 ![](results/corr_corridor.png)
 
+
+
+Difference Buffer - Corridor:
+
+![](results/corr_diff.png)
+
+
+
 ![](results/hdmr.svg)
 
 
