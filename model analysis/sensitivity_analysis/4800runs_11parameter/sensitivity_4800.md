@@ -43,6 +43,8 @@ Output after 50 years of both scenarios:
 - total newts
 - number of occupied ponds
 
+![](results/output_hist.svg)
+
 
 
  Sensitivity analysis methods (separate for each out variable):
@@ -51,3 +53,16 @@ Output after 50 years of both scenarios:
 - High-Dimensional Model Representation (HDMR) using B-spline functions
 - Sobol Analysis
 
+Buffer:
+
+![](results/corr_buffer.png)
+
+Corridor:
+
+![](results/corr_corridor.png)
+
+![](results/hdmr.svg)
+
+
+
+![](results/sobol.svg)
