@@ -3,6 +3,8 @@ netlogopy_venv/
 .ipynb_checkpoints/
 .idea/
 
+__pycache__/
+
 
 # History files
 .Rhistory
