@@ -330,42 +330,32 @@ to set-heading
 end
 
 to set-heading-woodland [woodland-patches]
-      let woodland-heading 0
+  let woodland-heading 0
 
-      ifelse movement-in-forest = "one forest patch"
-      [
-        ;print (word "choose randomly one forest patch")
-        set woodland-heading towards one-of woodland-patches with [distance myself > 0]
-      ] ; end of choosing heading towards one forest patch
+  let x-coords []
+  let y-coords []
 
-      [
-        ;print (word "mean of forest patches")
-        let x-coords []
-        let y-coords []
+  ask woodland-patches with [distance myself > 0]
+  [
+    set x-coords lput pxcor x-coords
+    set y-coords lput pycor y-coords
+  ]
 
-        ask woodland-patches with [distance myself > 0]
-        [
-          set x-coords lput pxcor x-coords
-          set y-coords lput pycor y-coords
-        ]
+  let headings []
+  let patch-iterator 0
+  while [patch-iterator < count woodland-patches with [distance myself > 0]]
+  [
+    set headings lput towards one-of woodland-patches with [pxcor = item patch-iterator x-coords and pycor = item patch-iterator y-coords] headings
+    set patch-iterator patch-iterator + 1
+  ]
 
-        let headings []
-        let patch-iterator 0
-        while [patch-iterator < count woodland-patches with [distance myself > 0]]
-        [
-          set headings lput towards one-of woodland-patches with [pxcor = item patch-iterator x-coords and pycor = item patch-iterator y-coords] headings
-          set patch-iterator patch-iterator + 1
-        ]
+  set woodland-heading mean headings
 
-        set woodland-heading mean headings
+  ; random heading
+  let random-heading random-normal heading 10
 
-      ] ; end of choosing mean forest heading
-
-      ; random heading
-      let random-heading random-normal heading 10
-
-      let diff subtract-headings woodland-heading random-heading
-      set heading  random-heading + diff *  (1 - 0.05) ; random-influence-in-forest 0.05
+  let diff subtract-headings woodland-heading random-heading
+  set heading  random-heading + diff *  (1 - 0.05) ; random-influence-in-forest 0.05
 end
 
 
@@ -581,10 +571,10 @@ to plot-timeseries
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-587
-55
-1109
-578
+678
+47
+1200
+570
 -1
 -1
 1.287
@@ -697,12 +687,12 @@ PENS
 "pond-6" 1.0 0 -10899396 true "" ""
 
 TEXTBOX
-21
-228
-171
-262
-reproduction & mortality
-14
+25
+236
+211
+258
+Mortality
+18
 0.0
 0
 
@@ -710,9 +700,9 @@ TEXTBOX
 28
 17
 178
-35
-initialization
-14
+39
+Initialization
+18
 0.0
 1
 
@@ -728,9 +718,9 @@ occupied-ponds
 11
 
 SLIDER
-16
+19
 321
-265
+268
 354
 mortality-decrease-with-buffer
 mortality-decrease-with-buffer
@@ -761,9 +751,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 SLIDER
-16
+19
 372
-268
+271
 405
 mean-adult-mortality-prob
 mean-adult-mortality-prob
@@ -776,9 +766,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
+18
 415
-270
+273
 448
 mean-juvenile-mortality-prob
 mean-juvenile-mortality-prob
@@ -791,10 +781,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-461
-268
-494
+303
+270
+556
+303
 mean-number-of-female-offspring
 mean-number-of-female-offspring
 0
@@ -806,25 +796,25 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-23
-512
-173
-530
-migration\n
-12
+24
+474
+203
+504
+Migration \n
+18
 0.0
 1
 
 SLIDER
 20
-580
+549
 327
-613
+582
 woodland-movement-cost
 woodland-movement-cost
 0
 20
-1.0
+0.0
 1
 1
 per patch
@@ -832,9 +822,9 @@ HORIZONTAL
 
 SLIDER
 20
-624
+593
 321
-657
+626
 cropland-movement-cost
 cropland-movement-cost
 0
@@ -847,9 +837,9 @@ HORIZONTAL
 
 SLIDER
 19
-535
+504
 278
-568
+537
 movement-energy
 movement-energy
 0
@@ -860,21 +850,11 @@ movement-energy
 per year
 HORIZONTAL
 
-CHOOSER
-18
-671
-218
-716
-movement-in-forest
-movement-in-forest
-"one forest patch" "mean forest patches"
-1
-
 SLIDER
-19
-731
-373
-764
+17
+648
+371
+681
 distance-for-viewing-ponds-and-woodland
 distance-for-viewing-ponds-and-woodland
 1
@@ -886,10 +866,10 @@ patches
 HORIZONTAL
 
 SLIDER
-20
-773
-417
-806
+18
+690
+415
+723
 angle-for-viewing-ponds-and-woodland
 angle-for-viewing-ponds-and-woodland
 1
@@ -939,46 +919,41 @@ SWITCH
 190
 one-pond-without-starting-newts
 one-pond-without-starting-newts
-1
+0
 1
 -1000
+
+TEXTBOX
+309
+238
+459
+260
+Reproduction
+18
+0.0
+1
+
+TEXTBOX
+119
+478
+269
+496
+(also capacity)
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
-
-## HOW IT WORKS
-
-(what rules the agents use to create the overall behavior of the model)
-
-## HOW TO USE IT
-
-(how to use the model, including a description of each of the items in the Interface tab)
-
-## THINGS TO NOTICE
-
-(suggested things for the user to notice while running the model)
-
-## THINGS TO TRY
-
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+A model to analyse management options (buffers or corridors) to promote the population of the great crested newt in an agarian landscape.
 
 ## CREDITS AND REFERENCES
+License: CC-BY-SA  
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/. 
+
+The model code and the code for analysing the model can be found at: https://github.com/FelixNoessler/Buffers-or-corridors-for-great-crested-newts 
 @#$#@#$#@
 default
 true
