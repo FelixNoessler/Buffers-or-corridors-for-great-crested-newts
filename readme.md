@@ -23,7 +23,15 @@ If Python is not installed in the global path, the NetLogo code have to be adjus
 
 
 
+## Example from buffer scenario
 
+![model overview](additional%20material%20for%20report/buffer_animation.gif)
+
+
+
+## Example from corridor scenario
+
+![model overview](additional%20material%20for%20report/corridor_animation.gif)
 
 
 
