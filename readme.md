@@ -2,7 +2,7 @@
 
 This repository contains the NetLogo model code and also the code for analysing the model. The model can be found [here](model/crested_newt.nlogo). The simulation experiments and the sensitivity analysis are found in the folder [model analysis](model%20analysis).
 
-![model overview](additional%20material%20for%20report/newts_overview.svg)
+![model overview](additional%20material%20for%20report/newts_overview.png)
 
 
 
